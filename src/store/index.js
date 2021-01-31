@@ -1,121 +1,140 @@
-import Vue from 'vue';
-import Vuex from 'vuex';
-const fb = require('../firebaseConfig.js');
+import Vue from 'vue'
+import Vuex from 'vuex'
+import * as fb from '../firebase'
+import router from '../router/index'
 
-Vue.use(Vuex);
+Vue.use(Vuex)
 
-// handle page reload
-fb.auth.onAuthStateChanged(user => {
-  if(user) {
-    store.commit('setCurrentUser', user);
-    store.dispatch('fetchUserProfile');
+// realtime firebase
+fb.postsCollection.orderBy('createdOn', 'desc').onSnapshot(snapshot => {
+  let postsArray = []
 
-    fb.postsCollection.orderBy('createdOn', 'desc').onSnapshot(querySnapshot => {
-      // check if created by currentUser
-      let createdByCurrentUser;
-      if(querySnapshot.docs.length) {
-        createdByCurrentUser = store.state.currentUser.uid === querySnapshot.docChanges()[0].doc.data().userId;
-      }
+  snapshot.forEach(doc => {
+    let post = doc.data()
+    post.id = doc.id
 
-      // add new posts to hiddenPosts array after initial load
-      if(querySnapshot.docChanges().length !== querySnapshot.docs.length &&
-        querySnapshot.docChanges()[0].type === 'added' && !createdByCurrentUser) {
-        const post = querySnapshot.docChanges()[0].doc.data();
-        post.id = querySnapshot.docChanges()[0].doc.id;
+    postsArray.push(post)
+  })
 
-        store.commit('setHiddenPosts', post);
-      } else {
-        const postsArray = [];
+  store.commit('setPosts', postsArray)
+})
 
-        querySnapshot.forEach(doc => {
-          const post = doc.data();
-          post.id = doc.id;
-          postsArray.push(post);
-        });
-
-        store.commit('setPosts', postsArray);
-      }
-    });
-
-    fb.usersCollection.doc(user.uid).onSnapshot(doc => {
-      store.commit('setUserProfile', doc.data());
-    });
-  }
-});
-
-export const store = new Vuex.Store({
+const store = new Vuex.Store({
   state: {
-    currentUser: null,
-    hiddenPosts: [],
-    posts: [],
     userProfile: {},
+    posts: []
   },
-
-  actions: {
-    clearData({ commit }) {
-      commit('setCurrentUser', null);
-      commit('setUserProfile', {});
-      commit('setPosts', null);
-      // commit('setHiddenPosts', null);
+  mutations: {
+    setUserProfile(state, val) {
+      state.userProfile = val
     },
-
-    fetchUserProfile({ commit, state }) {
-      fb.usersCollection.doc(state.currentUser.uid).get().then(res => {
-        commit('setUserProfile', res.data());
-      }).catch(err => {
-        console.log(err);
-      });
+    setPerformingRequest(state, val) {
+      state.performingRequest = val
     },
-
-    updateProfile({ commit, state }, data) {
-      const name = data.name;
-      const title = data.title;
-
-      fb.usersCollection.doc(state.currentUser.uid).update({ name, title }).then(user => {
-        // update all posts by user to reflect new name
-        fb.postsCollection.where('userId', '==', state.currentUser.uid).get().then(docs => {
-          docs.forEach(doc => {
-            fb.postsCollection.doc(doc.id).update({
-              userName: name
-            });
-          });
-        });
-        // update all comments by user to reflect new name
-        fb.commentsCollection.where('userId', '==', state.currentUser.uid).get().then(docs => {
-          docs.forEach(doc => {
-            fb.commentsCollection.doc(doc.id).update({
-              userName: name
-            });
-          });
-        });
-      }).catch(err => {
-        console.log(err);
-      });
+    setPosts(state, val) {
+      state.posts = val
     }
   },
+  actions: {
+    async login({ dispatch }, form) {
+      // sign user in
+      const { user } = await fb.auth.signInWithEmailAndPassword(form.email, form.password)
 
-  mutations: {
-    setCurrentUser(state, val) {
-      state.currentUser = val;
+      // fetch user profile and set in state
+      dispatch('fetchUserProfile', user)
     },
+    async signup({ dispatch }, form) {
+      // sign user up
+      const { user } = await fb.auth.createUserWithEmailAndPassword(form.email, form.password)
 
-    setHiddenPosts(state, val) {
-      if(val) {
-        // make sure not to add duplicates
-        if(!state.hiddenPosts.some(x => x.id === val.id)) {
-          state.hiddenPosts.unshift(val);
-        }
-      } else {
-        state.hiddenPosts = [];
+      // create user object in userCollections
+      await fb.usersCollection.doc(user.uid).set({
+        name: form.name,
+        title: form.title
+      })
+
+      // fetch user profile and set in state
+      dispatch('fetchUserProfile', user)
+    },
+    async fetchUserProfile({ commit }, user) {
+      // fetch user profile
+      const userProfile = await fb.usersCollection.doc(user.uid).get()
+
+      // set user profile in state
+      commit('setUserProfile', userProfile.data())
+
+      // change route to dashboard
+      if (router.currentRoute.path === '/login') {
+        router.push('/')
       }
     },
+    async logout({ commit }) {
+      // log user out
+      await fb.auth.signOut()
 
-    setPosts(state, val) {
-      state.posts = val;
-    },
+      // clear user data from state
+      commit('setUserProfile', {})
 
-    setUserProfile(state, val) {
-      state.userProfile = val;
+      // redirect to login view
+      router.push('/login')
     },
+    async createPost({ state, commit }, post) {
+      // create post in firebase
+      await fb.postsCollection.add({
+        createdOn: new Date(),
+        content: post.content,
+        userId: fb.auth.currentUser.uid,
+        userName: state.userProfile.name,
+        comments: 0,
+        likes: 0
+      })
+    },
+    async likePost ({ commit }, post) {
+      const userId = fb.auth.currentUser.uid
+      const docId = `${userId}_${post.id}`
+
+      // check if user has liked post
+      const doc = await fb.likesCollection.doc(docId).get()
+      if (doc.exists) { return }
+
+      // create post
+      await fb.likesCollection.doc(docId).set({
+        postId: post.id,
+        userId: userId
+      })
+
+      // update post likes count
+      fb.postsCollection.doc(post.id).update({
+        likes: post.likesCount + 1
+      })
+    },
+    async updateProfile({ dispatch }, user) {
+      const userId = fb.auth.currentUser.uid
+      // update user object
+      const userRef = await fb.usersCollection.doc(userId).update({
+        name: user.name,
+        title: user.title
+      })
+
+      dispatch('fetchUserProfile', { uid: userId })
+
+      // update all posts by user
+      const postDocs = await fb.postsCollection.where('userId', '==', userId).get()
+      postDocs.forEach(doc => {
+        fb.postsCollection.doc(doc.id).update({
+          userName: user.name
+        })
+      })
+
+      // update all comments by user
+      const commentDocs = await fb.commentsCollection.where('userId', '==', userId).get()
+      commentDocs.forEach(doc => {
+        fb.commentsCollection.doc(doc.id).update({
+          userName: user.name
+        })
+      })
+    }
   }
-});
+})
+
+export default store

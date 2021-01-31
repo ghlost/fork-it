@@ -1,54 +1,49 @@
-import Vue from 'vue';
-import Router from 'vue-router';
-import firebase from 'firebase';
-// import ViewName from '@/views/ViewName;
+import Vue from 'vue'
+import VueRouter from 'vue-router'
+import Dashboard from '../views/Dashboard.vue'
+import { auth } from '../firebase'
 
-import Login from '@/components/Login';
-import Dashboard from '@/components/Dashboard';
-import Settings from '@/components/Settings';
+Vue.use(VueRouter)
 
-Vue.use(Router);
-
-const router = new Router({
-  mode: 'history',
-  routes: [
-    {
-      path: '*',
-      redirect: '/dashboard'
-    },
-    {
-      path: '/login',
-      name: 'Login',
-      component: Login
-    },
-    {
-      path: '/dashboard',
-      name: 'Dashboard',
-      component: Dashboard,
-      meta: {
-        requiresAuth: true
-      }
-    },
-    {
-      path: '/settings',
-      name: 'Settings',
-      component: Settings,
-      meta: {
-        requiresAuth: true
-      }
+const routes = [
+  {
+    path: '/',
+    name: 'Dashboard',
+    component: Dashboard,
+    meta: {
+      requiresAuth: true
     }
-  ]
-});
-
-router.beforeEach((to, from, next) => {
-  const requiresAuth = to.matched.some(x => x.meta.requiresAuth);
-  const currentUser = firebase.auth().currentUser;
-
-  if (requiresAuth && !currentUser) {
-    next('/login');
-  } else {
-    next();
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import( /* webpackChunkName: "login" */ '../views/Login.vue')
+  },
+  {
+    path: '/settings',
+    name: 'settings',
+    component: () => import( /* webpackChunkName: "settings" */ '../views/Settings.vue'),
+    meta: {
+      requiresAuth: true
+    }
   }
-});
+]
 
-export default router;
+const router = new VueRouter({
+  mode: 'history',
+  base: process.env.BASE_URL,
+  routes
+})
+
+// navigation guard to check for logged in users
+router.beforeEach((to, from, next) => {
+  const requiresAuth = to.matched.some(x => x.meta.requiresAuth)
+
+  if (requiresAuth && !auth.currentUser) {
+    next('/login')
+  } else {
+    next()
+  }
+})
+
+export default router

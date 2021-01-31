@@ -1,18 +1,23 @@
 <template>
   <div id="app">
-    <Navigation v-if="currentUser"></Navigation>
+    <SiteNav v-if="showNav"></SiteNav>
     <router-view/>
   </div>
 </template>
 
 <script>
-import { mapState } from 'vuex';
-import Navigation from '@/components/Navigation.vue';
+import { mapState } from 'vuex'
+import SiteNav from '@/components/SiteNav'
 
 export default {
-  components: { Navigation },
+  components: {
+    SiteNav
+  },
   computed: {
-    ...mapState(['currentUser']),
+    ...mapState(['userProfile']),
+    showNav() {
+      return Object.keys(this.userProfile).length > 1
+    }
   }
-};
+}
 </script>
