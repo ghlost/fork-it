@@ -19,10 +19,24 @@ fb.postsCollection.orderBy('createdOn', 'desc').onSnapshot(snapshot => {
   store.commit('setPosts', postsArray)
 })
 
+fb.recipesCollection.orderBy('published', 'desc').onSnapshot(snapshot => {
+  let recipeArray = []
+
+  snapshot.forEach(doc => {
+    let recipe = doc.data()
+    recipe.id = doc.id
+
+    recipeArray.push(recipe)
+  })
+
+  store.commit('setRecipes', recipeArray)
+})
+
 const store = new Vuex.Store({
   state: {
     userProfile: {},
-    posts: []
+    posts: [],
+    recipes: [],
   },
   mutations: {
     setUserProfile(state, val) {
@@ -33,6 +47,9 @@ const store = new Vuex.Store({
     },
     setPosts(state, val) {
       state.posts = val
+    },
+    setRecipes(state, val) {
+      state.recipes = val
     }
   },
   actions: {
@@ -68,6 +85,34 @@ const store = new Vuex.Store({
         router.push('/')
       }
     },
+    async fetchUserRecipes({ commit }) {
+      // fetch user profile
+      // const recipes = await fb.recipesCollection.doc(user.uid).get()
+      const userId = fb.auth.currentUser.uid;
+      const recipes = await fb.recipesCollection.where('userId', '==', userId)
+        .get()
+        .then((querySnapshot) => {
+          let recipeArray = [];
+          querySnapshot.forEach((doc) => {
+            // doc.data() is never undefined for query doc snapshots
+            console.log(doc.id, " => ", doc.data());
+            let recipe = doc.data()
+
+            recipeArray.push(recipe);
+          });
+
+          commit('setRecipes', recipeArray)
+        });
+      // let recipeArray = recipes.filter(doc => {
+      //   let recipe = doc.data()
+      //   recipe.id = doc.id
+
+      //   return recipe.userName === user.userName ? recipe : null;
+      // })
+
+      // // set user profile in state
+      // commit('setRecipes', recipeArray)
+    },
     async logout({ commit }) {
       // log user out
       await fb.auth.signOut()
@@ -87,6 +132,18 @@ const store = new Vuex.Store({
         userName: state.userProfile.name,
         comments: 0,
         likes: 0
+      })
+    },
+    async createRecipe({ state, commit }, recipe) {
+      // create post in firebase
+      await fb.recipesCollection.add({
+        published: new Date(),
+        description: recipe.description,
+        userId: fb.auth.currentUser.uid,
+        userName: state.userProfile.name,
+        ingredients: recipe.ingredients,
+        instructions: recipe.instructions,
+        name: recipe.name,
       })
     },
     async likePost ({ commit }, post) {

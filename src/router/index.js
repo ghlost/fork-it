@@ -15,6 +15,22 @@ const routes = [
     }
   },
   {
+    path: '/recipes',
+    name: 'Recipe Board',
+    component: () => import( /* webpackChunkName: "login" */ '../views/RecipeBoard.vue'),
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/recipe/create',
+    name: 'Create Recipe',
+    component: () => import( /* webpackChunkName: "login" */ '../views/CreateRecipe.vue'),
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import( /* webpackChunkName: "login" */ '../views/Login.vue')
