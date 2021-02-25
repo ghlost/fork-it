@@ -3,18 +3,11 @@
     <section>
       <div class="col1">
         <div class="profile">
-          <h4>Recipes</h4>
-          <h5>{{ userProfile.name }}</h5>
-          <p>{{ userProfile.title }}</p>
-          <p>{{ userProfile.id }}</p>
-          <p><router-link to="/recipe/create">Create a recipe</router-link></p>
         </div>
       </div>
       <div class="col2">
-        <div v-if="recipes.length">
-          <div v-for="recipe in recipes" :key="recipe.id" class="post">
-            <recipe-detail :recipe="recipe"></recipe-detail>
-          </div>
+        <div v-if="!!recipe">
+          <recipe-detail :recipe="recipe"></recipe-detail>
         </div>
         <div v-else>
           <p class="no-results">There are currently no recipes</p>
@@ -35,23 +28,18 @@ export default {
     // RecipeBlock,
   },
   data() {
-    return {
-      recipe: {
-        description: '',
-        ingredients: '',
-        name: '',
-      },
-    }
+    const data = {};
+    return data;
   },
   computed: {
-    ...mapState(['userProfile', 'recipes'])
+    ...mapState(['userProfile', 'recipes', 'recipe'])
   },
   created: function() {
-    this.fetchUserRecipes();
+    this.fetchRecipe();
   },
   methods: {
-    fetchUserRecipes() {
-      this.$store.dispatch('fetchUserRecipes')
+    fetchRecipe() {
+      this.$store.dispatch('fetchRecipe', this.$route.params.id);
     },
   },
 }

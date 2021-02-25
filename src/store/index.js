@@ -37,19 +37,23 @@ const store = new Vuex.Store({
     userProfile: {},
     posts: [],
     recipes: [],
+    recipe: {},
   },
   mutations: {
     setUserProfile(state, val) {
-      state.userProfile = val
+      state.userProfile = val;
     },
     setPerformingRequest(state, val) {
-      state.performingRequest = val
+      state.performingRequest = val;
     },
     setPosts(state, val) {
-      state.posts = val
+      state.posts = val;
     },
     setRecipes(state, val) {
-      state.recipes = val
+      state.recipes = val;
+    },
+    setRecipe(state, val) {
+      state.recipe = val;
     }
   },
   actions: {
@@ -112,6 +116,11 @@ const store = new Vuex.Store({
 
       // // set user profile in state
       // commit('setRecipes', recipeArray)
+    },
+    async fetchRecipe({commit}, id) {
+      await fb.recipesCollection.doc(id).get().then((doc) => {
+        commit('setRecipe', doc.data());
+      });
     },
     async logout({ commit }) {
       // log user out
