@@ -1,14 +1,6 @@
 <template>
-  <div id="recipes">
+  <div id="dashboard">
     <section>
-      <div class="col1">
-        <div class="profile">
-          <h4>Recipes</h4>
-          <h5>{{ userProfile.name }}</h5>
-          <p>{{ userProfile.id }}</p>
-          <p><router-link to="/recipe/create">Create a recipe</router-link></p>
-        </div>
-      </div>
       <div class="col2">
         <div v-if="recipes.length">
           <div v-for="recipe in recipes" :key="recipe.id" class="post">
@@ -25,13 +17,12 @@
 </template>
 
 <script>
-// import RecipePreview from '@/components/RecipePreview'
 import RecipeDetail from '@/components/RecipeDetail'
 import { mapState } from 'vuex'
+import moment from 'moment'
 
 export default {
   components: {
-    // RecipePreview
     RecipeDetail
   },
   data() {
@@ -47,13 +38,25 @@ export default {
     ...mapState(['userProfile', 'recipes'])
   },
   created: function() {
-    this.fetchCurrentUserRecipes();
+    this.fetchUserRecipes();
   },
   methods: {
-    fetchCurrentUserRecipes() {
-      this.$store.dispatch('fetchCurrentUserRecipes')
+    fetchUserRecipes() {
+      this.$store.dispatch('fetchUserRecipes', this.$route.params.handle);
     },
   },
+  filters: {
+    formatDate(val) {
+      if (!val) { return '-' }
+
+      let date = val.toDate()
+      return moment(date).fromNow()
+    },
+    trimLength(val) {
+      if (val.length < 200) { return val }
+      return `${val.substring(0, 200)}...`
+    }
+  }
 }
 </script>
 

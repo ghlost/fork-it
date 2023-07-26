@@ -23,6 +23,14 @@ const routes = [
     }
   },
   {
+    path: '/chef/:handle',
+    name: 'Chef\'s Page',
+    component: () => import( /* webpackChunkName: "login" */ '../views/Chef.vue'),
+    meta: {
+      requiresAuth: false
+    }
+  },
+  {
     path: '/recipe/create',
     name: 'Create Recipe',
     component: () => import( /* webpackChunkName: "login" */ '../views/CreateRecipe.vue'),
