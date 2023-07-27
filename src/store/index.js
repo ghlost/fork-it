@@ -1,9 +1,7 @@
-import Vue from 'vue'
 import Vuex from 'vuex'
 import * as fb from '../firebase'
+import { getDocs, query, orderBy, collection, where } from 'firebase/firestore';
 import router from '../router/index'
-
-Vue.use(Vuex)
 
 // realtime firebase
 fb.postsCollection.orderBy('createdOn', 'desc').onSnapshot(snapshot => {

@@ -7,7 +7,7 @@
 
 <script>
 import { mapState } from 'vuex'
-import SiteNav from '@/components/SiteNav'
+import SiteNav from './components/SiteNav.vue'
 
 export default {
   components: {
