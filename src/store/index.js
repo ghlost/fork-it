@@ -65,17 +65,33 @@ const store = new Vuex.Store({
       dispatch('fetchUserProfile', user)
     },
     async signup({ dispatch }, form) {
-      // sign user up
-      const { user } = await fb.auth.createUserWithEmailAndPassword(form.email, form.password)
+      // check for existing handle
+      console.log(form.handle);
+      const querySnapshot = await fb.usersCollection.where('handle', '==', form.handle).get();
+      console.log(querySnapshot.docs);
+      if (querySnapshot.empty) {
+        // The querySnapshot contains the matching documents
+        // You can access the first user (if multiple found) using querySnapshot.docs[0]
 
-      // create user object in userCollections
-      await fb.usersCollection.doc(user.uid).set({
-        name: form.name,
-        title: form.title
-      })
+        // sign user up
+        const { user } = await fb.auth.createUserWithEmailAndPassword(form.email, form.password)
 
-      // fetch user profile and set in state
-      dispatch('fetchUserProfile', user)
+        // create user object in usersCollections
+        await fb.usersCollection.doc(user.uid).set({
+          name: form.name,
+          handle: form.handle
+        })
+
+        // fetch user profile and set in state
+        dispatch('fetchUserProfile', user)
+
+        return Promise.resolve('User created')
+      } else {
+        // Matching handle found
+        // error?
+        // how to return an error and display it
+        return Promise.reject(new Error('fail'));
+      }
     },
     async fetchUserProfile({ commit }, user) {
       // fetch user profile
@@ -89,10 +105,12 @@ const store = new Vuex.Store({
         router.push('/')
       }
     },
-    async fetchUserRecipes({ commit }) {
-      // fetch user profile
-      // const recipes = await fb.recipesCollection.doc(user.uid).get()
-      const userId = fb.auth.currentUser.uid;
+    /**
+     * fetchRecipesFromUserId
+     * @param {Object} {commit}
+     * @param {string} userId 
+     */
+    async fetchRecipesFromUserId({commit}, userId) {
       const recipes = await fb.recipesCollection.where('userId', '==', userId)
         .get()
         .then((querySnapshot) => {
@@ -107,15 +125,35 @@ const store = new Vuex.Store({
 
           commit('setRecipes', recipeArray)
         });
-      // let recipeArray = recipes.filter(doc => {
-      //   let recipe = doc.data()
-      //   recipe.id = doc.id
-
-      //   return recipe.userName === user.userName ? recipe : null;
-      // })
-
-      // // set user profile in state
-      // commit('setRecipes', recipeArray)
+    },
+    /**
+     * fetchUserRecipes - using the handle, get the users recipes in an array
+     * @param {Object} {commit, dispatch}
+     * @param {string} userId 
+     */
+    async fetchUserRecipes({ dispatch, commit }, handle) {
+      // fetch user profile
+      const userProfile = await fb.usersCollection.where('handle', '==', handle)
+        .get()
+        .then((userSnapshot) => {
+          if (userSnapshot.size > 0) {
+            dispatch('fetchRecipesFromUserId', userSnapshot.docs[0].id)
+          } else {
+            commit('setRecipes', []);
+          }
+        })
+    },
+    /**
+     * fetchCurrentUserRecipes - using the current logged in user 
+     * get the users recipes in an array
+     * @param {Object} {commit, dispatch}
+     * @param {string} userId
+     */
+    async fetchCurrentUserRecipes({ commit, dispatch }) {
+      // fetch user profile
+      const userId = fb.auth.currentUser.uid;
+      
+      await dispatch('fetchRecipesFromUserId', userId)
     },
     async fetchRecipe({commit}, id) {
       await fb.recipesCollection.doc(id).get().then((doc) => {
@@ -179,7 +217,7 @@ const store = new Vuex.Store({
       // update user object
       const userRef = await fb.usersCollection.doc(userId).update({
         name: user.name,
-        title: user.title
+        handle: user.handle
       })
 
       dispatch('fetchUserProfile', { uid: userId })

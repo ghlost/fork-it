@@ -7,7 +7,6 @@
       <div class="col1">
         <div class="profile">
           <h5>{{ userProfile.name }}</h5>
-          <p>{{ userProfile.title }}</p>
           <p><router-link to="/recipes">Recipes</router-link></p>
           <div class="create-post">
             <p>create a post</p>

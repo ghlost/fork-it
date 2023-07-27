@@ -26,22 +26,15 @@
         </form>
         <form v-else @submit.prevent>
           <h1>Get Started</h1>
-          <div>
-            <label for="name">Name</label>
-            <input v-model.trim="signupForm.name" type="text" placeholder="Savvy Apps" id="name" />
-          </div>
-          <div>
-            <label for="title">Title</label>
-            <input v-model.trim="signupForm.title" type="text" placeholder="Company" id="title" />
-          </div>
-          <div>
-            <label for="email2">Email</label>
-            <input v-model.trim="signupForm.email" type="text" placeholder="you@email.com" id="email2" />
-          </div>
-          <div>
-            <label for="password2">Password</label>
-            <input v-model.trim="signupForm.password" type="password" placeholder="min 6 characters" id="password2" />
-          </div>
+          <label v-for="(message, index) in errorMessages" :key=index>{{message}}</label>
+          <label for="name">Name</label>
+          <input v-model.trim="signupForm.name" type="text" placeholder="Name" id="name" />
+          <label for="handle">Handle</label>
+          <input v-model.trim="signupForm.handle" type="text" placeholder="Unique display name" id="handle" />
+          <label for="email2">Email</label>
+          <input v-model.trim="signupForm.email" type="text" placeholder="you@email.com" id="email2" />
+          <label for="password2">Password</label>
+          <input v-model.trim="signupForm.password" type="password" placeholder="min 6 characters" id="password2" />
           <button @click="signup()" class="button">Sign Up</button>
           <div class="extras">
             <a @click="toggleForm()">Back to Log In</a>
@@ -67,12 +60,13 @@ export default {
       },
       signupForm: {
         name: '',
-        title: '',
         email: '',
         password: ''
       },
       showLoginForm: true,
-      showPasswordReset: false
+      showPasswordReset: false,
+      showError: false,
+      errorMessages: []
     }
   },
   methods: {
@@ -93,7 +87,17 @@ export default {
         email: this.signupForm.email,
         password: this.signupForm.password,
         name: this.signupForm.name,
-        title: this.signupForm.title
+        handle: this.signupForm.handle
+      }).then((msg) => {
+        // resolved
+        this.showError = false;
+        this.errorMessages = [];
+        console.log(msg);
+      }, (msg) => {
+        // rejected
+        this.showError = true;
+        this.errorMessages.push('This handle has already been taken, please choose something else');
+        console.log(msg);
       })
     }
   }
