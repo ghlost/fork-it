@@ -105,35 +105,12 @@ const store = new Vuex.Store({
         router.push('/')
       }
     },
-    async fetchUserRecipes({ commit }, handle) {
-      // fetch user profile
-      const userProfile = await fb.usersCollection.where('handle', '==', handle)
-        .get()
-        .then((userSnapshot) => {
-          if (userSnapshot.size > 0) {
-            fb.recipesCollection.where('userId', '==', userSnapshot.docs[0].id)
-              .get()
-              .then((querySnapshot) => {
-                let recipeArray = [];
-                querySnapshot.forEach((doc) => {
-                  // doc.data() is never undefined for query doc snapshots
-                  console.log(doc.id, " => ", doc.data());
-                  let recipe = doc.data()
-    
-                  recipeArray.push(recipe);
-                });
-    
-                commit('setRecipes', recipeArray)
-              });
-          } else {
-            commit('setRecipes', []);
-          }
-        })
-    },
-    async fetchCurrentUserRecipes({ commit }) {
-      // fetch user profile
-      // const recipes = await fb.recipesCollection.doc(user.uid).get()
-      const userId = fb.auth.currentUser.uid;
+    /**
+     * fetchRecipesFromUserId
+     * @param {Object} {commit}
+     * @param {string} userId 
+     */
+    async fetchRecipesFromUserId({commit}, userId) {
       const recipes = await fb.recipesCollection.where('userId', '==', userId)
         .get()
         .then((querySnapshot) => {
@@ -148,15 +125,35 @@ const store = new Vuex.Store({
 
           commit('setRecipes', recipeArray)
         });
-      // let recipeArray = recipes.filter(doc => {
-      //   let recipe = doc.data()
-      //   recipe.id = doc.id
-
-      //   return recipe.userName === user.userName ? recipe : null;
-      // })
-
-      // // set user profile in state
-      // commit('setRecipes', recipeArray)
+    },
+    /**
+     * fetchUserRecipes - using the handle, get the users recipes in an array
+     * @param {Object} {commit, dispatch}
+     * @param {string} userId 
+     */
+    async fetchUserRecipes({ dispatch, commit }, handle) {
+      // fetch user profile
+      const userProfile = await fb.usersCollection.where('handle', '==', handle)
+        .get()
+        .then((userSnapshot) => {
+          if (userSnapshot.size > 0) {
+            dispatch('fetchRecipesFromUserId', userSnapshot.docs[0].id)
+          } else {
+            commit('setRecipes', []);
+          }
+        })
+    },
+    /**
+     * fetchCurrentUserRecipes - using the current logged in user 
+     * get the users recipes in an array
+     * @param {Object} {commit, dispatch}
+     * @param {string} userId
+     */
+    async fetchCurrentUserRecipes({ commit, dispatch }) {
+      // fetch user profile
+      const userId = fb.auth.currentUser.uid;
+      
+      await dispatch('fetchRecipesFromUserId', userId)
     },
     async fetchRecipe({commit}, id) {
       await fb.recipesCollection.doc(id).get().then((doc) => {
